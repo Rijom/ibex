@@ -1,7 +1,7 @@
-#include <ibex/Storage.h>
 #include <ibex/Function.h>
-#include <iostream>
+#include <ibex/Storage.h>
 
+#include <iostream>
 
 struct A {
   A() { std::cout << "A\n"; }
@@ -22,6 +22,4 @@ int main() {
   ibex::PolyStorage<A, 8> storage;
   storage.create<C>();
   storage.destroy();
-  
 }
-
