@@ -6,8 +6,10 @@
 
 namespace ibex {
 
+
 template <typename, size_t>
 class Function;
+
 
 template <size_t Size, typename Result, typename... Arguments>
 class Function<Result(Arguments...), Size> final {
@@ -18,19 +20,25 @@ class Function<Result(Arguments...), Size> final {
   template <typename ReturnType, typename... Args>
   struct ErasedFunctorHolder {
     virtual ~ErasedFunctorHolder() {}
-    virtual ReturnType operator()(Args&&...) = 0;
+    virtual ReturnType operator()(Args...) = 0;
     virtual void moveInto(void*) = 0;
   };
 
   template <typename Functor, typename ReturnType, typename... Args>
   struct FunctorHolder final : ErasedFunctorHolder<Result, Arguments...> {
-    // Non-erased Functor
-    Functor f;
+    // Types
+    using functor_t = std::remove_reference_t<Functor>;
+    
+    // Members
+    functor_t f;
 
-    FunctorHolder(Functor&& func) : f(std::move(func)) {}
+    // Functions
+    FunctorHolder(functor_t&& func) : f(std::move(func)) {}
+    FunctorHolder(const functor_t& func) : f(func) {}
+
     ~FunctorHolder() override = default;
 
-    ReturnType operator()(Args&&... args) override {
+    ReturnType operator()(Args... args) override {
       return f(std::forward<Arguments>(args)...);
     }
 
@@ -44,8 +52,8 @@ class Function<Result(Arguments...), Size> final {
   // ---------------------------------------------------------------------------
   // Members
   // ---------------------------------------------------------------------------
-  bool m_isValid{false};  //
   mutable PolyStorage<holder_t, Size> m_storage;
+  bool m_isValid{false};
 
   // ---------------------------------------------------------------------------
   // Public Functions
@@ -58,16 +66,17 @@ class Function<Result(Arguments...), Size> final {
     if (m_isValid) m_storage.destroy();
   }
 
-  // Move CTOR
-  Function(Function&& other) { moveFrom(std::move(other)); }
-
+  // Construct a Function from a movable or copyable callable
   template <typename Functor>
-  Function(Functor&& f) {
+  Function(Functor&& f) : m_isValid{true} {
     using exactFunctionHolder_t = FunctorHolder<Functor, Result, Arguments...>;
-    m_storage.template create<exactFunctionHolder_t>(std::move(f));
-    m_isValid = true;
+    m_storage.template create<exactFunctionHolder_t>(std::forward<Functor>(f));
   }
 
+  // Move construct from other Function
+  Function(Function&& other) { moveFrom(std::move(other)); }
+
+  // Move assignment from other Function
   Function& operator=(Function&& other) {
     if (this != &other) {
       moveFrom(std::move(other));
@@ -75,14 +84,13 @@ class Function<Result(Arguments...), Size> final {
     return *this;
   }
 
-  // Invoke the contained target.
-  // Note: Undefined behaviour if no valid target is stored .
-  Result operator()(Arguments&&... args) const {
+  // Invoke the contained target. Throws if no valid target has been stored.
+  Result operator()(Arguments... args) const {
     if (!m_isValid) throw std::bad_function_call{};
     return m_storage.get()(std::forward<Arguments>(args)...);
   }
 
-  // Check whether a valid function is stored
+  // Check whether a valid function is stored.
   operator bool() const { return m_isValid; }
 
   // ---------------------------------------------------------------------------

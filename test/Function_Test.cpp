@@ -1,5 +1,4 @@
 #include <ibex/Function.h>
-#include <ibex/Storage.h>
 
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
@@ -42,7 +41,7 @@ TEST_CASE("Moving around a function preserves its state.") {
     total += x;
     return total;
   };
-  ibex::Function<int(int), 64> sum(std::move(lambda));
+  ibex::Function<int(int), 64> sum(lambda);
 
   sum(1);
   sum(2);

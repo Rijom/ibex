@@ -47,7 +47,7 @@ class Storage {
 template <typename Base, std::size_t Size>
 class PolyStorage {
  private:
-  std::aligned_storage_t<Size> m_storage;
+  std::aligned_storage_t<Size> m_storage; // For certain compilers this will be min. 16 bytes. :(
 
  public:
   template <typename... Args>
