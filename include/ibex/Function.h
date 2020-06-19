@@ -10,22 +10,30 @@ namespace ibex {
 template <typename, size_t>
 class Function;
 
-
-template <size_t Size, typename Result, typename... Arguments>
+///
+/// @brief      This class stores and invokes any callable target.
+///             It is similar to std::function but differs in two key aspects:
+///             - Size of the target is fixed, no heap allocation will take place.
+///             - This is a move-only class. This has the advantage that you can
+///
+/// @tparam     Size       Maximal target size in bytes
+/// @tparam     Result     Target return type
+/// @tparam     Arguments  Target argument types
+///
+template <std::size_t Size, typename Result, typename... Arguments>
 class Function<Result(Arguments...), Size> final {
  private:
   // ---------------------------------------------------------------------------
   // Types
   // ---------------------------------------------------------------------------
-  template <typename ReturnType, typename... Args>
   struct ErasedFunctorHolder {
     virtual ~ErasedFunctorHolder() {}
-    virtual ReturnType operator()(Args...) = 0;
+    virtual Result operator()(Arguments...) = 0;
     virtual void moveInto(void*) = 0;
   };
 
-  template <typename Functor, typename ReturnType, typename... Args>
-  struct FunctorHolder final : ErasedFunctorHolder<Result, Arguments...> {
+  template <typename Functor>
+  struct FunctorHolder final : ErasedFunctorHolder {
     // Types
     using functor_t = std::remove_reference_t<Functor>;
     
@@ -38,7 +46,7 @@ class Function<Result(Arguments...), Size> final {
 
     ~FunctorHolder() override = default;
 
-    ReturnType operator()(Args... args) override {
+    Result operator()(Arguments... args) override {
       return f(std::forward<Arguments>(args)...);
     }
 
@@ -47,7 +55,7 @@ class Function<Result(Arguments...), Size> final {
     }
   };
 
-  using holder_t = ErasedFunctorHolder<Result, Arguments...>;
+  using holder_t = ErasedFunctorHolder;
 
   // ---------------------------------------------------------------------------
   // Members
@@ -69,7 +77,7 @@ class Function<Result(Arguments...), Size> final {
   // Construct a Function from a movable or copyable callable
   template <typename Functor>
   Function(Functor&& f) : m_isValid{true} {
-    using exactFunctionHolder_t = FunctorHolder<Functor, Result, Arguments...>;
+    using exactFunctionHolder_t = FunctorHolder<Functor>;
     m_storage.template create<exactFunctionHolder_t>(std::forward<Functor>(f));
   }
 
