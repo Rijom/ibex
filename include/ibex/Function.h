@@ -17,50 +17,48 @@ class Function;
 ///             - This is a move-only class. This has the advantage that you can
 ///
 /// @tparam     Size       Maximal target size in bytes
-/// @tparam     Result     Target return type
-/// @tparam     Arguments  Target argument types
+/// @tparam     R          Target return type
+/// @tparam     Args       Target argument types
 ///
-template <std::size_t Size, typename Result, typename... Arguments>
-class Function<Result(Arguments...), Size> final {
+template <std::size_t Size, typename R, typename... Args>
+class Function<R(Args...), Size> final {
  private:
   // ---------------------------------------------------------------------------
-  // Types
+  // Child Classes: Target Wrappers
   // ---------------------------------------------------------------------------
-  struct ErasedFunctorHolder {
-    virtual ~ErasedFunctorHolder() {}
-    virtual Result operator()(Arguments...) = 0;
+
+  // Type erased target functor
+  struct ErasedTarget {
+    virtual ~ErasedTarget() {}
+    virtual R operator()(Args...) = 0;
     virtual void moveInto(void*) = 0;
   };
 
+  // Holds a non-type-erased target
   template <typename Functor>
-  struct FunctorHolder final : ErasedFunctorHolder {
-    // Types
+  struct Target final : ErasedTarget {
     using functor_t = std::remove_reference_t<Functor>;
-    
-    // Members
     functor_t f;
 
-    // Functions
-    FunctorHolder(functor_t&& func) : f(std::move(func)) {}
-    FunctorHolder(const functor_t& func) : f(func) {}
+    Target(functor_t&& func) : f(std::move(func)) {}
+    Target(const functor_t& func) : f(func) {}
+    ~Target() override = default;
 
-    ~FunctorHolder() override = default;
-
-    Result operator()(Arguments... args) override {
-      return f(std::forward<Arguments>(args)...);
+    // Call contained target
+    R operator()(Args... args) override {
+      return f(std::forward<Args>(args)...);
     }
 
+    // Move contained target to a different memory location
     void moveInto(void* destination) override {
-      new (destination) FunctorHolder(std::move(f));
+      new (destination) Target(std::move(f));
     }
   };
-
-  using holder_t = ErasedFunctorHolder;
 
   // ---------------------------------------------------------------------------
   // Members
   // ---------------------------------------------------------------------------
-  mutable PolyStorage<holder_t, Size> m_storage;
+  mutable PolyStorage<ErasedTarget, Size> m_storage;
   bool m_isValid{false};
 
   // ---------------------------------------------------------------------------
@@ -77,8 +75,7 @@ class Function<Result(Arguments...), Size> final {
   // Construct a Function from a movable or copyable callable
   template <typename Functor>
   Function(Functor&& f) : m_isValid{true} {
-    using exactFunctionHolder_t = FunctorHolder<Functor>;
-    m_storage.template create<exactFunctionHolder_t>(std::forward<Functor>(f));
+    m_storage.template create<Target<Functor>>(std::forward<Functor>(f));
   }
 
   // Move construct from other Function
@@ -93,9 +90,9 @@ class Function<Result(Arguments...), Size> final {
   }
 
   // Invoke the contained target. Throws if no valid target has been stored.
-  Result operator()(Arguments... args) const {
+  R operator()(Args... args) const {
     if (!m_isValid) throw std::bad_function_call{};
-    return m_storage.get()(std::forward<Arguments>(args)...);
+    return m_storage.get()(std::forward<Args>(args)...);
   }
 
   // Check whether a valid function is stored.
@@ -105,6 +102,7 @@ class Function<Result(Arguments...), Size> final {
   // Private Functions
   // ---------------------------------------------------------------------------
  private:
+  // Steal contents from other function
   void moveFrom(Function&& other) {
     clear();
     if (other.m_isValid) {
@@ -114,6 +112,7 @@ class Function<Result(Arguments...), Size> final {
     }
   }
 
+  // Cleanly destroy contained target
   void clear() {
     if (m_isValid) {
       m_storage.destroy();
