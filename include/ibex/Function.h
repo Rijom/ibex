@@ -58,7 +58,7 @@ class Function<R(Args...), Size> final {
   // ---------------------------------------------------------------------------
   // Members
   // ---------------------------------------------------------------------------
-  mutable PolyStorage<ErasedTarget, Size> m_storage;
+  mutable ErasedStorage<ErasedTarget, Size> m_storage;
   bool m_isValid{false};
 
   // ---------------------------------------------------------------------------

@@ -19,7 +19,8 @@ struct C : public B {
 };
 
 int main() {
-  ibex::PolyStorage<A, 8> storage;
+  ibex::ErasedStorage<A, 8> storage;
   storage.create<C>();
   storage.destroy();
 }
+
