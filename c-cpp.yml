@@ -1,0 +1,24 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: run-cmake
+      uses: lukka/run-cmake@v2.5
+      with:
+        # Select the mode of the action. There are three different modes: CMakeListsTxtBasic: Run CMake using a CMakeLists.txt - Basic configuration, CMakeListsTxtAdvanced: Run CMake using a CMakeLists.txt - Advanced configuration, CMakeSettingsJson: Run CMake using a CMakeSettings.json of Visual Studio.
+        cmakeListsOrSettingsJson: CMakeListsTxtBasic # default is CMakeListsTxtBasic
+        # Path to CMakeLists.txt. Used for both CMakeListsTxtBasic and CMakeListsTxtAdvanced modes.
+        cmakeListsTxtPath: ${{ github.workspace }}/CMakeLists.txt # optional, default is ${{ github.workspace }}/CMakeLists.txt
+
