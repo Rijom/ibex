@@ -12,9 +12,10 @@ class Function;
 
 ///
 /// @brief      This class stores and invokes any callable target.
-///             It is similar to std::function but differs in two key aspects:
+///             It differs from std::function in two key aspects:
 ///             - Size of the target is fixed, no heap allocation will take place.
-///             - This is a move-only class. This has the advantage that you can
+///             - This is a move-only class. This has the advantage that you can store a
+///               std::unique_ptr in a target.
 ///
 /// @tparam     Size       Maximal target size in bytes
 /// @tparam     R          Target return type
